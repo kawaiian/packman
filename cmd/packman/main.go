@@ -15,29 +15,12 @@ const (
 	connType = "tcp"
 )
 
-var (
-	mu		sync.Mutex	// guards package library
-	pkgLib	
-)
-
 // Request holds the message from a client
 type Request struct {
 	request      string
 	pkg          string
 	dependencies []string
 }
-
-// packageLibrary is a hashMap of package names to dependency lists
-type packageLibrary struct {
-	pkgDeps		map[string] []string
-}
-
-func newPackageLibrary() *packageLibrary {
-	return &packageLibrary {
-		pkgDeps: make(map[string] []string)
-	}
-}
-
 
 //--- main ---
 func main() {
@@ -57,11 +40,11 @@ func main() {
 			log.Printf("Error accepting connection: %v\n", err)
 			continue
 		}
-		go handleConn(conn)
+		go handleRequest(conn)
 	}
 }
 
-func handleConn(c net.Conn) {
+func handleRequest(c net.Conn) {
 	defer c.Close()
 	for {
 
