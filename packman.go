@@ -26,12 +26,12 @@ var (
 )
 
 type pkgRequest struct {
-	req         string
-	pkg         string
-	depndencies []string
+	req     string
+	pkg     string
+	depList []string
 }
 
-//--- main ---
+// --- Main ---
 func main() {
 	lstnr, err := net.Listen(connType, addr)
 	if err != nil {
@@ -63,8 +63,11 @@ func handleRequest(c net.Conn) {
 			return
 		}
 
-		// validate the request; if valid, return a pkgRequest object
-		pkgReq, err := parseRequest(msg)
+		// validate the request
+		pkgReq, err := parsePkgRequest(msg)
+		if err != nil {
+			log.Printf("Invalid request: %v\n", err)
+		}
 
 		// here we handle each case (INDEX, QUERY, REMOVE)
 		// using their own functions, each working off the mutex for locking
@@ -74,19 +77,59 @@ func handleRequest(c net.Conn) {
 	}
 }
 
-func parseRequest(msg string) (pkgRequest, error) {
+func parsePkgRequest(msg string) (pkgRequest, error) {
 	var pkgReq pkgRequest
-	validReqs := map[string]struct{}{"INDEX": {}, "QUERY": {}, "REMOVE": {}}
 
 	msgParts := strings.Split(msg, "|")
-	req := msgParts[0]
-	_, reqOk := validReqs[req]
-
-	if len(msgParts) < 3 || !reqOk {
-		return pkgReq, errors.New("Invalid request")
+	if len(msgParts) < 3 {
+		return pkgReq, errors.New("invalid request")
 	}
 
-	validator, _ := regexp.Compile(`^[a-zA-Z0-9]+[a-zA-Z0-9\-\_\+]*[a-zA-Z0-9\+]*$`)
+	err := parseRequest(msgParts[0])
+	if err != nil {
+		return pkgReq, err
+	}
+
+	err = parsePkgNames(msgParts[1], msgParts[2])
+	if err != nil {
+		return pkgReq, err
+	}
 
 	// Otherwise, return a request struct
+	pkgReq = pkgRequest{
+		req:     msgParts[0],
+		pkg:     msgParts[1],
+		depList: strings.Split(msgParts[2], ","),
+	}
+
+	return pkgReq, nil
+}
+
+func parseRequest(req string) error {
+	validReqs := map[string]struct{}{"INDEX": {}, "QUERY": {}, "REMOVE": {}}
+
+	_, reqOk := validReqs[req]
+
+	if !reqOk {
+		return errors.New("invalid request")
+	}
+
+	return nil
+}
+
+func parsePkgNames(pkgName string, pkgDepList string) error {
+	// Compose list of package and all dependencies from msg
+	fullPkgList := make([]string, len(pkgDepList)+1)
+	fullPkgList = append(fullPkgList, pkgName)
+	fullPkgList = append(fullPkgList, strings.Split(pkgDepList, ",")...)
+
+	// Check to make sure both the main package and its dependencies are valid
+	for _, name := range fullPkgList {
+		validName, _ := regexp.MatchString(`^[a-zA-Z0-9]+[a-zA-Z0-9\-\_\+]*[a-zA-Z0-9\+]*$`, name)
+		if !validName {
+			return errors.New("invalid package name")
+		}
+	}
+
+	return nil
 }
