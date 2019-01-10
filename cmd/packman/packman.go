@@ -4,14 +4,13 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"log"
 	"net"
 	"os"
-	"regexp"
-	"strings"
 	"sync"
+
+	"github.com/kawaiian/packman"
 )
 
 const (
@@ -65,7 +64,7 @@ func handleRequest(c net.Conn) {
 		}
 
 		// validate the request
-		pkgReq, err := parsePkgRequest(msg)
+		pkgReq, err := packman.ParsePkgRequest(msg)
 		if err != nil {
 			log.Printf("Invalid request: %v\n", err)
 		} else {
@@ -79,68 +78,4 @@ func handleRequest(c net.Conn) {
 			}
 		}
 	}
-}
-
-func parsePkgRequest(msg string) (pkgRequest, error) {
-	var pkgReq pkgRequest
-
-	// Requests are expected to be "<command>|<pkg>|<dependency>\n"
-	msgParts := strings.Split(msg, "|")
-	if len(msgParts) < 3 {
-		return pkgReq, errors.New("invalid request format")
-	}
-
-	err := parseRequest(msgParts[0])
-	if err != nil {
-		return pkgReq, err
-	}
-
-	dListString := strings.TrimSuffix(msgParts[2], "\n")
-	pkgDepList := strings.Split(dListString, ",")
-	err = parsePkgNames(msgParts[1], pkgDepList)
-	if err != nil {
-		return pkgReq, err
-	}
-
-	// Otherwise, return a request struct
-	pkgReq = pkgRequest{
-		req:     msgParts[0],
-		pkg:     msgParts[1],
-		depList: pkgDepList,
-	}
-
-	return pkgReq, nil
-}
-
-// parseRequest Validates request type is one of INDEX, QUERY, or REMOVE
-func parseRequest(req string) error {
-	validReqs := map[string]struct{}{"INDEX": {}, "QUERY": {}, "REMOVE": {}}
-
-	_, reqOk := validReqs[req]
-	if !reqOk {
-		return errors.New("invalid request type: not INDEX, QUERY, or REMOVE")
-	}
-
-	return nil
-}
-
-// parsePkgNames validates the format of package and dependency names
-func parsePkgNames(pkgName string, pkgDepList []string) error {
-
-	fullPkgList := make([]string, 1)
-	fullPkgList[0] = pkgName
-	if pkgDepList[0] != "" {
-		fullPkgList = append(fullPkgList, pkgDepList...)
-	}
-
-	validName := false
-	validator := regexp.MustCompile(`^[a-zA-Z0-9]+[a-zA-Z0-9\-\_\+]*[a-zA-Z0-9\+]*$`)
-	for _, name := range fullPkgList {
-		validName = validator.MatchString(name)
-		if !validName {
-			return errors.New("invalid package name")
-		}
-	}
-
-	return nil
 }

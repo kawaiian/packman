@@ -1,6 +1,3 @@
-// Validator
-// All the code for validating client package requests for the packman server.
-
 package packman
 
 import (
@@ -9,7 +6,7 @@ import (
 	"strings"
 )
 
-type pkgRequest struct {
+type PkgRequest struct {
 	req     string
 	pkg     string
 	depList []string
@@ -17,8 +14,8 @@ type pkgRequest struct {
 
 // ParsePkgRequest validates a package request by decomposing it and
 // passing those components to helper functions.
-func parsePkgRequest(msg string) (pkgRequest, error) {
-	var pkgReq pkgRequest
+func ParsePkgRequest(msg string) (PkgRequest, error) {
+	var pkgReq PkgRequest
 
 	// Requests are expected to be "<command>|<pkg>|<dependency>\n"
 	msgParts := strings.Split(msg, "|")
@@ -39,7 +36,7 @@ func parsePkgRequest(msg string) (pkgRequest, error) {
 	}
 
 	// Otherwise, return a request struct
-	pkgReq = pkgRequest{
+	pkgReq = PkgRequest{
 		req:     msgParts[0],
 		pkg:     msgParts[1],
 		depList: pkgDepList,
@@ -48,7 +45,7 @@ func parsePkgRequest(msg string) (pkgRequest, error) {
 	return pkgReq, nil
 }
 
-// parseRequest Validates request type is one of INDEX, QUERY, or REMOVE
+// ParseRequest Validates request type is one of INDEX, QUERY, or REMOVE
 func parseRequest(req string) error {
 	validReqs := map[string]struct{}{"INDEX": {}, "QUERY": {}, "REMOVE": {}}
 
@@ -60,7 +57,7 @@ func parseRequest(req string) error {
 	return nil
 }
 
-// parsePkgNames validates the format of package and dependency names
+// ParsePkgNames validates the format of package and dependency names
 func parsePkgNames(pkgName string, pkgDepList []string) error {
 
 	fullPkgList := make([]string, 1)
