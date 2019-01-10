@@ -12,6 +12,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"sync"
 
 	"github.com/kawaiian/packman"
 )
@@ -24,6 +25,9 @@ const (
 )
 
 func main() {
+	pkgTree := make(map[string][]string) // this is our in-memory package index/tree storage
+	var mu = &sync.RWMutex{}
+
 	lstnr, err := net.Listen(connType, addr)
 	if err != nil {
 		log.Fatal(err)
@@ -38,11 +42,11 @@ func main() {
 			log.Printf("Error accepting connection: %v\n", err)
 			continue
 		}
-		go handleRequest(conn)
+		go handleRequest(conn, pkgTree, mu)
 	}
 }
 
-func handleRequest(c net.Conn) {
+func handleRequest(c net.Conn, pkgTree map[string][]string, mu *sync.RWMutex) {
 	var response string
 
 	defer c.Close()
@@ -61,7 +65,7 @@ func handleRequest(c net.Conn) {
 			log.Printf("Invalid request: %v\n", err)
 			response = "ERROR"
 		} else {
-			response = packman.HandlePkgRequest(pkgReq)
+			response = packman.HandlePkgRequest(pkgReq, pkgTree, mu)
 		}
 		c.Write([]byte(response + "\n"))
 	}

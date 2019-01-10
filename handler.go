@@ -6,25 +6,20 @@ import (
 	"sync"
 )
 
-var (
-	mu      sync.RWMutex
-	pkgTree map[string][]string
-)
-
 // HandlePkgRequest reads and writes to the pkgLib in-memory store, based on the associated command
-func HandlePkgRequest(pkgReq PkgRequest) string {
+func HandlePkgRequest(pkgReq PkgRequest, pkgTree map[string][]string, mu *sync.RWMutex) string {
 	var response string
 
 	switch pkgReq.Cmd {
 	case "INDEX":
 		log.Printf("Received INDEX request for %s with dependencies %s\n", pkgReq.Pkg, pkgReq.DepList)
-		response = handleIdx(pkgReq, pkgTree)
+		response = handleIdx(pkgReq, pkgTree, mu)
 	case "QUERY":
 		log.Printf("Received QUERY request for %s\n", pkgReq.Pkg)
-		response = handleQry(pkgReq, pkgTree)
+		response = handleQry(pkgReq, pkgTree, mu)
 	case "REMOVE":
 		log.Printf("Received REMOVE request for %s\n", pkgReq.Pkg)
-		response = handleRemove(pkgReq, pkgTree)
+		response = handleRemove(pkgReq, pkgTree, mu)
 	default:
 		log.Printf("Received invalid request: %s\n", pkgReq.Cmd)
 		response = "ERROR"
@@ -32,7 +27,7 @@ func HandlePkgRequest(pkgReq PkgRequest) string {
 	return response
 }
 
-func handleQry(pkgReq PkgRequest, pkgTree map[string][]string) string {
+func handleQry(pkgReq PkgRequest, pkgTree map[string][]string, mu *sync.RWMutex) string {
 	mu.RLock()
 	defer mu.RUnlock()
 
@@ -47,7 +42,7 @@ func handleQry(pkgReq PkgRequest, pkgTree map[string][]string) string {
 	return "FAIL"
 }
 
-func handleIdx(pkgReq PkgRequest, pkgTree map[string][]string) string {
+func handleIdx(pkgReq PkgRequest, pkgTree map[string][]string, mu *sync.RWMutex) string {
 
 	pkgName := pkgReq.Pkg
 
@@ -80,10 +75,11 @@ func handleIdx(pkgReq PkgRequest, pkgTree map[string][]string) string {
 	pkgTree[pkgName] = pkgReq.DepList
 	mu.Unlock()
 	log.Printf("Successfully indexed %s with dependencies %s", pkgName, pkgReq.DepList)
+	log.Printf("Current pkgTree is %s", pkgTree)
 	return "OK"
 }
 
-func handleRemove(pkgReq PkgRequest, pkgTree map[string][]string) string {
+func handleRemove(pkgReq PkgRequest, pkgTree map[string][]string, mu *sync.RWMutex) string {
 	pkgName := pkgReq.Pkg
 	// Check if the package exists in the pkgTree, if not we're done
 	// TODO: Need to check that the pkgTree exists, or else return "OK"
@@ -98,17 +94,20 @@ func handleRemove(pkgReq PkgRequest, pkgTree map[string][]string) string {
 	// Otherwise, iterate the pkgTree, and use a binary search for the package on each dependency list
 	// This is O (nlogn) in the worst case, where the dependency does not exist in any other package
 	log.Printf("Checking dependencies for %s...", pkgName)
+	mu.Lock()
 	for _, depList := range pkgTree {
 		if len(depList) > 0 {
 			idx := sort.Search(len(depList), func(i int) bool { return depList[i] >= pkgName })
 			if idx < len(depList) && depList[idx] == pkgName {
 				log.Printf("Found dependency for %s; can't remove it.", pkgName)
+				mu.Unlock()
 				return "FAIL"
 			}
 		}
 	}
 
 	delete(pkgTree, pkgName)
+	mu.Unlock()
 	log.Printf("No dependencies for %s detected. Successfully removed.", pkgName)
 
 	return "OK"

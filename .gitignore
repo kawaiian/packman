@@ -13,3 +13,5 @@
 
 # Binary for this app
 cmd/packman/packman
+
+*.log

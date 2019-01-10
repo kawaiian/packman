@@ -1,8 +1,11 @@
 package packman
 
 import (
+	"sync"
 	"testing"
 )
+
+var mu = &sync.RWMutex{}
 
 func TestHandleQry(t *testing.T) {
 	pkgTree := map[string][]string{
@@ -18,28 +21,28 @@ func TestHandleQry(t *testing.T) {
 		{PkgRequest{Cmd: "QUERY", Pkg: "git", DepList: []string{""}}, "FAIL"}, // pkg not indexed
 	}
 	for _, test := range tests {
-		if got := handleQry(test.input, pkgTree); got != test.want {
+		if got := handleQry(test.input, pkgTree, mu); got != test.want {
 			t.Errorf("handleQry(%q) = %v", test.input, got)
 		}
 	}
 }
 
-func TestHandleIdx(t *testing.T) {
+func TestHandleIdxSucceeds(t *testing.T) {
 	pkgTree := map[string][]string{
 		"git":       []string{"gcc+"},
 		"ilo-tools": []string{""},
 	}
-	var tests = []struct {
-		input PkgRequest
-		want  string
-	}{
-		{PkgRequest{Cmd: "INDEX", Pkg: "flask", DepList: []string{"mysql", "nginx"}}, "FAIL"}, // dependencies not indexed yet
-		{PkgRequest{Cmd: "INDEX", Pkg: "ab", DepList: []string{""}}, "OK"},                    // no dependencies
-	}
-	for _, test := range tests {
-		if got := handleIdx(test.input, pkgTree); got != test.want {
-			t.Errorf("handleIdx(%q) = %v", test.input, got)
+
+	testReq := PkgRequest{Cmd: "INDEX", Pkg: "ab", DepList: []string{""}}
+	response := handleIdx(testReq, pkgTree, mu)
+
+	if response == "OK" {
+		_, indexed := pkgTree[testReq.Pkg]
+		if !indexed {
+			t.Errorf("handleIdx(%q) did not properly index package", testReq.Pkg)
 		}
+	} else {
+		t.Errorf("handleIdx(%q) did not successfully complete index operation,", testReq.Pkg)
 	}
 }
 
@@ -53,9 +56,9 @@ func TestHandleIdxForExisingPkg(t *testing.T) {
 	testReq := PkgRequest{Cmd: "INDEX", Pkg: "git", DepList: []string{"ab", "make"}}
 	expected := []string{"ab", "make"}
 
-	response := handleIdx(testReq, pkgTree)
+	response := handleIdx(testReq, pkgTree, mu)
 
-	if response != "FAIL" {
+	if response == "OK" {
 		newDepList := pkgTree["git"]
 		for idx, pkgName := range newDepList {
 			if pkgName != expected[idx] {
@@ -78,7 +81,7 @@ func TestHandleRemoveSuceeds(t *testing.T) {
 	}
 
 	testReq := PkgRequest{Cmd: "REMOVE", Pkg: "make", DepList: []string{""}}
-	response := handleRemove(testReq, pkgTree)
+	response := handleRemove(testReq, pkgTree, mu)
 	if response == "OK" {
 		_, stillIndexed := pkgTree[testReq.Pkg]
 		if stillIndexed {
@@ -97,7 +100,7 @@ func TestHandleRemoveFails(t *testing.T) {
 	}
 
 	testReq := PkgRequest{Cmd: "REMOVE", Pkg: "git", DepList: []string{""}}
-	response := handleRemove(testReq, pkgTree)
+	response := handleRemove(testReq, pkgTree, mu)
 	if response == "FAIL" {
 		_, stillIndexed := pkgTree[testReq.Pkg]
 		if !stillIndexed {
