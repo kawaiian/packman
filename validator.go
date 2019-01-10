@@ -8,9 +8,9 @@ import (
 
 // PkgRequest encapsulates the three main fields of a client's request to the packman service
 type PkgRequest struct {
-	cmd     string
-	pkg     string
-	depList []string
+	Cmd     string
+	Pkg     string
+	DepList []string
 }
 
 // ParsePkgRequest validates a package request by decomposing it and
@@ -38,9 +38,9 @@ func ParsePkgRequest(msg string) (PkgRequest, error) {
 
 	// Otherwise, return a request struct
 	pkgReq = PkgRequest{
-		cmd:     msgParts[0],
-		pkg:     msgParts[1],
-		depList: pkgDepList,
+		Cmd:     msgParts[0],
+		Pkg:     msgParts[1],
+		DepList: pkgDepList,
 	}
 
 	return pkgReq, nil

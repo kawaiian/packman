@@ -18,12 +18,6 @@ const (
 	port     = "8080"
 )
 
-type pkgRequest struct {
-	req     string
-	pkg     string
-	depList []string
-}
-
 // --- Main ---
 func main() {
 	lstnr, err := net.Listen(connType, addr)
@@ -34,7 +28,6 @@ func main() {
 	defer lstnr.Close()
 	log.Print("Packman server listening on " + addr + "...")
 
-	// Accept connections, concurrently
 	for {
 		conn, err := lstnr.Accept()
 		if err != nil {
@@ -46,6 +39,8 @@ func main() {
 }
 
 func handleRequest(c net.Conn) {
+	var response string
+
 	defer c.Close()
 	log.Printf("Serving %s\n", c.RemoteAddr().String())
 
@@ -60,8 +55,10 @@ func handleRequest(c net.Conn) {
 		pkgReq, err := packman.ParsePkgRequest(msg)
 		if err != nil {
 			log.Printf("Invalid request: %v\n", err)
+			response = "ERROR"
 		} else {
-			response := packman.handlePkgRequest(pkgReq)
+			response = packman.HandlePkgRequest(pkgReq)
 		}
+		c.Write([]byte(response + "\n"))
 	}
 }
