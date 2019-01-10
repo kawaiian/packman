@@ -43,3 +43,28 @@ func TestHandleIdx(t *testing.T) {
 		}
 	}
 }
+
+func TestHandleIdxForExisingPkg(t *testing.T) {
+	pkgTree := map[string][]string{
+		"ab":        []string{""},
+		"git":       []string{"gcc+"},
+		"ilo-tools": []string{""},
+		"make":      []string{""},
+	}
+	testPkg := PkgRequest{Cmd: "INDEX", Pkg: "git", DepList: []string{"ab", "make"}}
+	expected := []string{"ab", "make"}
+
+	response := handleIdx(testPkg, pkgTree)
+
+	if response != "FAIL" {
+		newDepList := pkgTree["git"]
+		for idx, pkgName := range newDepList {
+			if pkgName != expected[idx] {
+				t.Errorf("handleIdx(%q) did not update deplist properly", testPkg.Pkg)
+			}
+		}
+	} else {
+		t.Errorf("handleIdx(%q) failed to index properly", testPkg.Pkg)
+	}
+
+}
