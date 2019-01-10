@@ -1,4 +1,9 @@
-// Just trying to see how quickly I can stand up a golang package server.
+// -------
+// Packman provides a concurrency-safe Linux package index.
+// Please see the README for more information!
+//
+// Author: Kawai Washburn <kawaiwashburn@gmail.com>
+// -------
 
 package main
 
@@ -18,7 +23,6 @@ const (
 	port     = "8080"
 )
 
-// --- Main ---
 func main() {
 	lstnr, err := net.Listen(connType, addr)
 	if err != nil {
