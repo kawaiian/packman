@@ -64,7 +64,7 @@ func handleIdx(pkgReq PkgRequest) string {
 	}
 	// sort the dependency list in ascending oreder before indexing
 	// this allows us to use a binary search when checking dependencies in a REMOVE request
-	sort.SliceStable(pkgReq.DepList, func(a, b string) bool { return pkgReq.DepList[a] < pkgReq.DepList[b] })
+	sort.SliceStable(pkgReq.DepList, func(a, b int) bool { return pkgReq.DepList[a] < pkgReq.DepList[b] })
 	pkgTree[pkgName] = pkgReq.DepList
 	mu.Unlock()
 	log.Printf("Successfully indexed %s with dependencies %s", pkgName, pkgReq.DepList)
