@@ -1,7 +1,7 @@
-// Validator package
+// Validator
 // All the code for validating client package requests for the packman server.
 
-package validator
+package packman
 
 import (
 	"errors"
