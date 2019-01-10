@@ -57,14 +57,15 @@ func handleIdx(pkgReq PkgRequest) string {
 		mu.RUnlock()
 	}
 
+	// sort the dependency list in ascending oreder before indexing
+	// this allows us to use a binary search when checking dependencies in a REMOVE request
+	sort.SliceStable(pkgReq.DepList, func(a, b int) bool { return pkgReq.DepList[a] < pkgReq.DepList[b] })
+
 	// index the package and dependency list, note we create the datastore if it doesn't exist
 	mu.Lock()
 	if pkgTree == nil {
 		pkgTree = make(map[string][]string)
 	}
-	// sort the dependency list in ascending oreder before indexing
-	// this allows us to use a binary search when checking dependencies in a REMOVE request
-	sort.SliceStable(pkgReq.DepList, func(a, b int) bool { return pkgReq.DepList[a] < pkgReq.DepList[b] })
 	pkgTree[pkgName] = pkgReq.DepList
 	mu.Unlock()
 	log.Printf("Successfully indexed %s with dependencies %s", pkgName, pkgReq.DepList)
