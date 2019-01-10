@@ -36,11 +36,12 @@ func handleQry(pkgReq PkgRequest, pkgTree map[string][]string) string {
 	mu.RLock()
 	defer mu.RUnlock()
 
-	// TODO: Need to check if the pkgTree has been created yet, otherwise return FAIL
-	_, pkgIndexed := pkgTree[pkgReq.Pkg]
-	if pkgIndexed {
-		log.Printf("Found %s in index", pkgReq.Pkg)
-		return "OK"
+	if pkgTree != nil {
+		_, pkgIndexed := pkgTree[pkgReq.Pkg]
+		if pkgIndexed {
+			log.Printf("Found %s in index", pkgReq.Pkg)
+			return "OK"
+		}
 	}
 	log.Printf("Did not find %s in index.", pkgReq.Pkg)
 	return "FAIL"
