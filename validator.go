@@ -15,10 +15,10 @@ type PkgRequest struct {
 
 // ParsePkgRequest validates a package request by decomposing it and
 // passing those components to helper functions.
+// Requests are expected to be "<command>|<pkg>|<dependency>\n"
 func ParsePkgRequest(msg string) (PkgRequest, error) {
 	var pkgReq PkgRequest
 
-	// Requests are expected to be "<command>|<pkg>|<dependency>\n"
 	msgParts := strings.Split(msg, "|")
 	if len(msgParts) < 3 {
 		return pkgReq, errors.New("invalid request format")
@@ -36,7 +36,6 @@ func ParsePkgRequest(msg string) (PkgRequest, error) {
 		return pkgReq, err
 	}
 
-	// Otherwise, return a request struct
 	pkgReq = PkgRequest{
 		Cmd:     msgParts[0],
 		Pkg:     msgParts[1],
@@ -59,6 +58,7 @@ func parseCmd(cmd string) error {
 }
 
 // ParsePkgNames validates the format of package and dependency names
+// valid names are alphanumeric with potential dashes or underscores in the middle
 func parsePkgNames(pkgName string, pkgDepList []string) error {
 
 	fullPkgList := make([]string, 1)

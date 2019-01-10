@@ -14,6 +14,7 @@ var (
 // HandlePkgRequest reads and writes to the pkgLib in-memory store, based on the associated command
 func HandlePkgRequest(pkgReq PkgRequest) string {
 	var response string
+
 	switch pkgReq.Cmd {
 	case "INDEX":
 		log.Printf("Received INDEX request for %s with dependencies %s\n", pkgReq.Pkg, pkgReq.DepList)
@@ -23,6 +24,10 @@ func HandlePkgRequest(pkgReq PkgRequest) string {
 		response = handleQry(pkgReq)
 	case "REMOVE":
 		log.Printf("Received REMOVE request for %s\n", pkgReq.Pkg)
+		response = handleRemove(pkgReq)
+	default:
+		log.Printf("Received invalid request: %s\n", pkgReq.Cmd)
+		response = "ERROR"
 	}
 	return response
 }
@@ -31,10 +36,13 @@ func handleQry(pkgReq PkgRequest) string {
 	mu.RLock()
 	defer mu.RUnlock()
 
+	// TODO: Need to check if the pkgTree has been created yet, otherwise return FAIL
 	_, pkgIndexed := pkgTree[pkgReq.Pkg]
 	if pkgIndexed {
+		log.Printf("Found %s in index", pkgReq.Pkg)
 		return "OK"
 	}
+	log.Printf("Did not find %s in index.", pkgReq.Pkg)
 	return "FAIL"
 }
 
@@ -72,10 +80,33 @@ func handleIdx(pkgReq PkgRequest) string {
 	return "OK"
 }
 
-func handleRemove(pkgreq PkgRequest) string {
-	// Check if the package exists in the pkgTree
-	// If not, return "OK"
-	// Otherwise, iterate the pkgTree, then use sort.SearchStrings on each depList to see if the package exists
-	// this is O (nlogn) in the worst case, where the dependency does not exist in any other package
+func handleRemove(pkgReq PkgRequest) string {
+	pkgName := pkgReq.Pkg
+	// Check if the package exists in the pkgTree, if not we're done
+	// TODO: Need to check that the pkgTree exists, or else return "OK"
+	mu.RLock()
+	_, pkgIndexed := pkgTree[pkgName]
+	mu.RUnlock()
+	if !pkgIndexed {
+		log.Printf("Package %s is not indexed, so doesn't need to be removed.", pkgName)
+		return "OK"
+	}
+
+	// Otherwise, iterate the pkgTree, and use a binary search for the package on each dependency list
+	// This is O (nlogn) in the worst case, where the dependency does not exist in any other package
+	log.Printf("Checking dependencies for %s...", pkgName)
+	for _, depList := range pkgTree {
+		if len(depList) > 0 {
+			idx := sort.Search(len(depList), func(i int) bool { return depList[i] >= pkgName })
+			if idx < len(depList) && depList[idx] == pkgName {
+				log.Printf("Found dependency for %s; can't remove it.", pkgName)
+				return "FAIL"
+			}
+		}
+	}
+
+	delete(pkgTree, pkgName)
+	log.Printf("No dependencies for %s detected. Successfully removed.", pkgName)
+
 	return "OK"
 }
