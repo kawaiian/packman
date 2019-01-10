@@ -6,8 +6,9 @@ import (
 	"strings"
 )
 
+// PkgRequest encapsulates the three main fields of a client's request to the packman service
 type PkgRequest struct {
-	req     string
+	cmd     string
 	pkg     string
 	depList []string
 }
@@ -23,7 +24,7 @@ func ParsePkgRequest(msg string) (PkgRequest, error) {
 		return pkgReq, errors.New("invalid request format")
 	}
 
-	err := parseRequest(msgParts[0])
+	err := parseCmd(msgParts[0])
 	if err != nil {
 		return pkgReq, err
 	}
@@ -37,7 +38,7 @@ func ParsePkgRequest(msg string) (PkgRequest, error) {
 
 	// Otherwise, return a request struct
 	pkgReq = PkgRequest{
-		req:     msgParts[0],
+		cmd:     msgParts[0],
 		pkg:     msgParts[1],
 		depList: pkgDepList,
 	}
@@ -45,13 +46,13 @@ func ParsePkgRequest(msg string) (PkgRequest, error) {
 	return pkgReq, nil
 }
 
-// ParseRequest Validates request type is one of INDEX, QUERY, or REMOVE
-func parseRequest(req string) error {
-	validReqs := map[string]struct{}{"INDEX": {}, "QUERY": {}, "REMOVE": {}}
+// parseCmd Validates request type is one of INDEX, QUERY, or REMOVE
+func parseCmd(cmd string) error {
+	validCmds := map[string]struct{}{"INDEX": {}, "QUERY": {}, "REMOVE": {}}
 
-	_, reqOk := validReqs[req]
-	if !reqOk {
-		return errors.New("invalid request type: not INDEX, QUERY, or REMOVE")
+	_, cmdOk := validCmds[cmd]
+	if !cmdOk {
+		return errors.New("invalid command: not INDEX, QUERY, or REMOVE")
 	}
 
 	return nil

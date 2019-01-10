@@ -4,11 +4,9 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"log"
 	"net"
 	"os"
-	"sync"
 
 	"github.com/kawaiian/packman"
 )
@@ -18,11 +16,6 @@ const (
 	connType = "tcp"
 	host     = "0.0.0.0"
 	port     = "8080"
-)
-
-var (
-	mu      sync.RWMutex
-	pkgTree map[string][]string
 )
 
 type pkgRequest struct {
@@ -68,14 +61,7 @@ func handleRequest(c net.Conn) {
 		if err != nil {
 			log.Printf("Invalid request: %v\n", err)
 		} else {
-			switch pkgReq.req {
-			case "INDEX":
-				fmt.Printf("Received INDEX request for %s with dependencies %s\n", pkgReq.pkg, pkgReq.depList)
-			case "QUERY":
-				fmt.Printf("Received QUERY request for %s\n", pkgReq.pkg)
-			case "REMOVE":
-				fmt.Printf("Received REMOVE request for %s\n", pkgReq.pkg)
-			}
+			response := packman.handlePkgRequest(pkgReq)
 		}
 	}
 }
