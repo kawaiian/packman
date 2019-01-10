@@ -53,17 +53,19 @@ func handleIdx(pkgReq PkgRequest, pkgTree map[string][]string) string {
 
 	// if there are dependencies, check to see if all of them are indexed, FAIL if not
 	// this is O(n) where n is the size of the dependency list
-	if len(pkgReq.DepList[0]) > 0 {
-		mu.RLock()
-		for _, depName := range pkgReq.DepList {
-			_, depIndexed := pkgTree[depName]
-			if !depIndexed {
-				log.Printf("Unable to index %s because dependency %s not indexed", pkgName, depName)
-				mu.RUnlock()
-				return "FAIL"
+	if pkgTree != nil {
+		if len(pkgReq.DepList[0]) > 0 {
+			mu.RLock()
+			for _, depName := range pkgReq.DepList {
+				_, depIndexed := pkgTree[depName]
+				if !depIndexed {
+					log.Printf("Unable to index %s because dependency %s not indexed", pkgName, depName)
+					mu.RUnlock()
+					return "FAIL"
+				}
 			}
+			mu.RUnlock()
 		}
-		mu.RUnlock()
 	}
 
 	// sort the dependency list in ascending oreder before indexing

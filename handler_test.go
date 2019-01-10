@@ -24,3 +24,22 @@ func TestHandleQry(t *testing.T) {
 		}
 	}
 }
+
+func TestHandleIdx(t *testing.T) {
+	pkgTree := map[string][]string{
+		"git":       []string{"gcc+"},
+		"ilo-tools": []string{""},
+	}
+	var tests = []struct {
+		input PkgRequest
+		want  string
+	}{
+		{PkgRequest{Cmd: "INDEX", Pkg: "flask", DepList: []string{"mysql", "nginx"}}, "FAIL"}, // dependencies not indexed yet
+		{PkgRequest{Cmd: "INDEX", Pkg: "ab", DepList: []string{""}}, "OK"},                    // no dependencies
+	}
+	for _, test := range tests {
+		if got := handleIdx(test.input, pkgTree); got != test.want {
+			t.Errorf("handleIdx(%q) = %v", test.input, got)
+		}
+	}
+}
