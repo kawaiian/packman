@@ -12,4 +12,4 @@
 *.out
 
 # Binary for this app
-*packman
+cmd/packman/packman
