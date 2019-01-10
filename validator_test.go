@@ -1,4 +1,3 @@
-// unit tests for validator
 package packman
 
 import (
