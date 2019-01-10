@@ -18,13 +18,13 @@ func HandlePkgRequest(pkgReq PkgRequest) string {
 	switch pkgReq.Cmd {
 	case "INDEX":
 		log.Printf("Received INDEX request for %s with dependencies %s\n", pkgReq.Pkg, pkgReq.DepList)
-		response = handleIdx(pkgReq)
+		response = handleIdx(pkgReq, pkgTree)
 	case "QUERY":
 		log.Printf("Received QUERY request for %s\n", pkgReq.Pkg)
-		response = handleQry(pkgReq)
+		response = handleQry(pkgReq, pkgTree)
 	case "REMOVE":
 		log.Printf("Received REMOVE request for %s\n", pkgReq.Pkg)
-		response = handleRemove(pkgReq)
+		response = handleRemove(pkgReq, pkgTree)
 	default:
 		log.Printf("Received invalid request: %s\n", pkgReq.Cmd)
 		response = "ERROR"
@@ -32,7 +32,7 @@ func HandlePkgRequest(pkgReq PkgRequest) string {
 	return response
 }
 
-func handleQry(pkgReq PkgRequest) string {
+func handleQry(pkgReq PkgRequest, pkgTree map[string][]string) string {
 	mu.RLock()
 	defer mu.RUnlock()
 
@@ -46,7 +46,7 @@ func handleQry(pkgReq PkgRequest) string {
 	return "FAIL"
 }
 
-func handleIdx(pkgReq PkgRequest) string {
+func handleIdx(pkgReq PkgRequest, pkgTree map[string][]string) string {
 
 	pkgName := pkgReq.Pkg
 
@@ -80,7 +80,7 @@ func handleIdx(pkgReq PkgRequest) string {
 	return "OK"
 }
 
-func handleRemove(pkgReq PkgRequest) string {
+func handleRemove(pkgReq PkgRequest, pkgTree map[string][]string) string {
 	pkgName := pkgReq.Pkg
 	// Check if the package exists in the pkgTree, if not we're done
 	// TODO: Need to check that the pkgTree exists, or else return "OK"
