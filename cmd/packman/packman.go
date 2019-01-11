@@ -26,7 +26,7 @@ const (
 
 func main() {
 	pkgTree := make(map[string][]string) // this is our in-memory package index/tree storage
-	var mu = &sync.RWMutex{}
+	var mu = &sync.Mutex{}
 
 	lstnr, err := net.Listen(connType, addr)
 	if err != nil {
@@ -46,7 +46,7 @@ func main() {
 	}
 }
 
-func handleRequest(c net.Conn, pkgTree map[string][]string, mu *sync.RWMutex) {
+func handleRequest(c net.Conn, pkgTree map[string][]string, mu *sync.Mutex) {
 	var response string
 
 	defer c.Close()

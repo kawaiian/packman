@@ -7,7 +7,7 @@ import (
 )
 
 // HandlePkgRequest reads and writes to the pkgLib in-memory store, based on the associated command
-func HandlePkgRequest(pkgReq PkgRequest, pkgTree map[string][]string, mu *sync.RWMutex) string {
+func HandlePkgRequest(pkgReq PkgRequest, pkgTree map[string][]string, mu *sync.Mutex) string {
 	var response string
 
 	switch pkgReq.Cmd {
@@ -27,9 +27,9 @@ func HandlePkgRequest(pkgReq PkgRequest, pkgTree map[string][]string, mu *sync.R
 	return response
 }
 
-func handleQry(pkgReq PkgRequest, pkgTree map[string][]string, mu *sync.RWMutex) string {
-	mu.RLock()
-	defer mu.RUnlock()
+func handleQry(pkgReq PkgRequest, pkgTree map[string][]string, mu *sync.Mutex) string {
+	mu.Lock()
+	defer mu.Unlock()
 
 	if pkgTree != nil {
 		_, pkgIndexed := pkgTree[pkgReq.Pkg]
@@ -42,7 +42,9 @@ func handleQry(pkgReq PkgRequest, pkgTree map[string][]string, mu *sync.RWMutex)
 	return "FAIL"
 }
 
-func handleIdx(pkgReq PkgRequest, pkgTree map[string][]string, mu *sync.RWMutex) string {
+func handleIdx(pkgReq PkgRequest, pkgTree map[string][]string, mu *sync.Mutex) string {
+	mu.Lock()
+	defer mu.Unlock()
 
 	pkgName := pkgReq.Pkg
 
@@ -50,16 +52,13 @@ func handleIdx(pkgReq PkgRequest, pkgTree map[string][]string, mu *sync.RWMutex)
 	// this is O(n) where n is the size of the dependency list
 	if pkgTree != nil {
 		if len(pkgReq.DepList[0]) > 0 {
-			mu.RLock()
 			for _, depName := range pkgReq.DepList {
 				_, depIndexed := pkgTree[depName]
 				if !depIndexed {
 					log.Printf("Unable to index %s because dependency %s not indexed", pkgName, depName)
-					mu.RUnlock()
 					return "FAIL"
 				}
 			}
-			mu.RUnlock()
 		}
 	}
 
@@ -68,24 +67,23 @@ func handleIdx(pkgReq PkgRequest, pkgTree map[string][]string, mu *sync.RWMutex)
 	sort.SliceStable(pkgReq.DepList, func(a, b int) bool { return pkgReq.DepList[a] < pkgReq.DepList[b] })
 
 	// index the package and dependency list, note we create the datastore if it doesn't exist
-	mu.Lock()
 	if pkgTree == nil {
 		pkgTree = make(map[string][]string)
 	}
 	pkgTree[pkgName] = pkgReq.DepList
-	mu.Unlock()
+
 	log.Printf("Successfully indexed %s with dependencies %s", pkgName, pkgReq.DepList)
-	log.Printf("Current pkgTree is %s", pkgTree)
 	return "OK"
 }
 
-func handleRemove(pkgReq PkgRequest, pkgTree map[string][]string, mu *sync.RWMutex) string {
+func handleRemove(pkgReq PkgRequest, pkgTree map[string][]string, mu *sync.Mutex) string {
+	mu.Lock()
+	defer mu.Unlock()
+
 	pkgName := pkgReq.Pkg
 	// Check if the package exists in the pkgTree, if not we're done
-	// TODO: Need to check that the pkgTree exists, or else return "OK"
-	mu.RLock()
 	_, pkgIndexed := pkgTree[pkgName]
-	mu.RUnlock()
+
 	if !pkgIndexed {
 		log.Printf("Package %s is not indexed, so doesn't need to be removed.", pkgName)
 		return "OK"
@@ -94,20 +92,18 @@ func handleRemove(pkgReq PkgRequest, pkgTree map[string][]string, mu *sync.RWMut
 	// Otherwise, iterate the pkgTree, and use a binary search for the package on each dependency list
 	// This is O (nlogn) in the worst case, where the dependency does not exist in any other package
 	log.Printf("Checking dependencies for %s...", pkgName)
-	mu.Lock()
+
 	for _, depList := range pkgTree {
 		if len(depList) > 0 {
 			idx := sort.Search(len(depList), func(i int) bool { return depList[i] >= pkgName })
 			if idx < len(depList) && depList[idx] == pkgName {
 				log.Printf("Found dependency for %s; can't remove it.", pkgName)
-				mu.Unlock()
 				return "FAIL"
 			}
 		}
 	}
 
 	delete(pkgTree, pkgName)
-	mu.Unlock()
 	log.Printf("No dependencies for %s detected. Successfully removed.", pkgName)
 
 	return "OK"

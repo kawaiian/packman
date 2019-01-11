@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-var mu = &sync.RWMutex{}
+var mu = &sync.Mutex{}
 
 func TestHandleQry(t *testing.T) {
 	pkgTree := map[string][]string{
